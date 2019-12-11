@@ -1,0 +1,423 @@
+/*Avl-self balancing tree
+Mika Kuittinen 0545102
+SOurces:
+the material provided for the course.
+https://www.geeksforgeeks.org/avl-tree-set-1-insertion/
+https://stackoverflow.com/questions/20378430/reading-numbers-from-a-text-file-into-an-array-in-c / used only for clarification on the method
+
+*/
+
+
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define trueSize 5
+
+typedef struct Node {
+  int luku;
+  short tila; /* the current balance modifier */
+  struct Node *vasen, *oikea;
+} branch, *branchP;
+
+void addSpace(int, int);
+void valikko(branch*);
+branch* haeSolmu(int, int, branch*);
+void lisaaAlkio(branch*);
+void lisaa_solmu(branchP *, int, int *, branchP*);
+void oikea_kierto(branchP *, int *);
+void tulosta_puuTrue(branchP, int , int *, int);
+void findSyvyys(branchP, int*, int);
+void vasen_kierto(branchP *, int *);
+void tulosta_puu(branchP);
+void exitP(branchP);
+int* readFile();
+/*void writeFile(int*);
+int* goThroughTreeInOrder(branchP, int*, int*, int);
+int* getSizeOfTree(branchP, int*);
+int* getTree(branchP);*/
+
+
+/*Main gets the list from readFile function and starts adding nodes one by one until the list gotten has been gone through*/
+int main()
+{
+  int etp = 0, i;
+  int *luvut=readFile();
+  branchP puu = NULL;
+  for(i = 0; luvut[i] != 0; i++)
+  {
+    lisaa_solmu(&puu, luvut[i], &etp, &puu);
+    tulosta_puu(puu);
+    printf("\n\n");
+  }
+  tulosta_puu(puu);
+  printf("\n");
+  valikko(puu);
+  return 0;
+}
+
+/*function that is used for selecting what to do from 4 options. 1. print the tree horizontally 2. add a node to the tree. 3. dinf if a node is in the tree 0. end program*/
+void valikko(branch *master){
+  int end=0, valinta, key=1, arvo;
+  while(end==0){
+    printf("What do you want to do?\n 1) Print tree\n 2) Add node to the tree\n 3) Find Node\n 0) Exit\n");
+    scanf("%d", &valinta);
+    switch(valinta){
+      case 1:
+      tulosta_puu(master);  
+      break;
+
+      case 2:
+      lisaaAlkio(master);
+      break;
+
+      case 3:
+      key++;
+      printf("Write the node/value you wish to be found: ");
+      scanf("%d", &arvo);
+      branch* test=malloc(sizeof(branch*));
+      test=master;
+      test=haeSolmu(arvo, key, test);
+      if(test!=NULL){
+          printf("the value is in the tree %d\n", test->luku);
+        }else{
+          printf("value %d was not in the tree\n", arvo);
+        }
+
+      free(test);
+      break;
+
+      case 0:
+      end=1;
+      break;
+    }
+  }
+}
+
+/*Adds Node to the tree*/
+void lisaaAlkio(branch* master){
+  printf("What node will be adde to the tree: ");
+  int lukuI, r=1;
+  scanf("%d", &lukuI);
+  lisaa_solmu(&master, lukuI, &r, &master);
+}
+
+branch* haeSolmu(int value, int key, branch* alku){
+  branch* NN=malloc(sizeof(branch*));
+  if(alku->luku==value){
+    return alku;
+  }
+  
+  if(alku->vasen!=NULL){
+    NN=haeSolmu( value, key, alku->vasen);
+    if(NN!=NULL){
+      return NN;
+    }
+  }
+  if(alku->oikea!=NULL){
+    NN=haeSolmu(value, key, alku->oikea);
+
+    if(NN!=NULL){
+      return NN;
+   }
+  }
+  return NULL;
+
+}
+
+/*function that goes through the tree recursively and does the balancing for the tree*/
+void lisaa_solmu(branchP *emo, int luku, int *etp, branchP *master)
+{
+  
+  if(!(*emo))
+  {
+    *etp = 1;
+    if(!(*emo = (branchP)malloc(sizeof(branch))))
+    {
+      perror("malloc");
+      exit(1);
+    }
+    
+    (*emo)->vasen = (*emo)->oikea = NULL;
+    (*emo)->tila = 0;
+    (*emo)->luku = luku;
+  } else if(luku < (*emo)->luku)
+  {
+    lisaa_solmu(&(*emo)->vasen, luku, etp, master);
+    if(*etp)
+    {
+      switch((*emo)->tila)
+      {
+        case -1:
+          (*emo)->tila = 0;
+          *etp = 0;
+          break;
+        case 0:
+          (*emo)->tila = 1;
+          break;
+        case 1:
+          vasen_kierto(emo, etp);
+      }
+    }
+  } else if(luku > (*emo)->luku)
+  {
+    lisaa_solmu(&(*emo)->oikea, luku, etp, master);
+    if(*etp)
+    {
+      switch((*emo)->tila)
+      {
+        case 1:
+          (*emo)->tila = 0;
+          *etp = 0;
+          break;
+        case 0:
+          (*emo)->tila = -1;
+           break;
+        case -1:
+          oikea_kierto(emo, etp);
+      }
+    }
+  } else
+  {
+    *etp = 0;
+    printf("Luku %d on jo puussa\n", luku);
+  }
+}
+/*debug funktio*/
+void ch(){
+  int test;
+  scanf("%d", &test);
+}
+
+/*adds spaces in the print tree based on the level of the tree and full depth*/
+void addSpace(int level, int depth){
+  if((level-depth)==0){
+    printf(" ");
+    return;
+  }
+  int f=depth-level-1;
+  int y=2;
+  
+  int x=0, i, j;
+  if(f==0){
+    printf("%3s", "");
+  }
+  else{
+    
+    for(j=0;j<f;j++){
+    y=y*2;
+    }
+    x=(y-1)*(depth+1)+2;
+  }
+  for(i=0; i<x; i++){
+    printf(" ");
+  }
+}
+
+/*iterative function that prints out all the levels of the tree*/
+void tulosta_puuTrue(branchP solmu, int level, int *depth, int syvyys)
+{
+  if(level==*depth){
+    
+    if(!solmu){
+      addSpace(*depth-1, syvyys); 
+      printf("%6s", "");
+      return;
+    }
+    
+    printf("%d(%d)", solmu->luku, solmu->tila);
+    if(*depth==syvyys){
+      printf("%4s", "");
+      return;
+    }
+    addSpace(*depth-1, syvyys);
+    return;
+  }
+  if(!solmu)return;
+  level++;
+  tulosta_puuTrue(solmu->vasen, level, depth, syvyys);
+  tulosta_puuTrue(solmu->oikea, level, depth, syvyys);
+  
+}
+
+/*looks for the depth of the tree that will be used in tulosta_puu function*/
+void findSyvyys(branchP main, int* cLevel, int syvyys){
+  
+  if(main==NULL) return;
+  syvyys++;
+  if(*cLevel<syvyys){
+    *cLevel=syvyys;
+  }
+  findSyvyys(main->vasen, cLevel, syvyys);
+  findSyvyys(main->oikea, cLevel, syvyys);
+
+}
+
+/*the first function in printing tree chain where it finds the depth of the tree and then start going through the levels*/
+void tulosta_puu(branchP solmu)
+{
+  int level=0;
+  findSyvyys(solmu, &level,0);
+  int syvyys= level-1;
+  int i=0;
+  for(i=0;i<syvyys+1;i++){
+    addSpace(i, syvyys);
+    tulosta_puuTrue(solmu, 0, &i, syvyys);
+    printf("\n\n");
+  }
+}
+
+/*right spin of unbalanced avl/tree*/
+void oikea_kierto(branchP *emo, int *etp){
+
+branchP lapsi, lapsenlapsi;
+  
+  lapsi = (*emo)->oikea;
+  if(lapsi->tila == -1) 
+  {
+    (*emo)->oikea = lapsi->vasen;
+    lapsi->vasen = *emo;
+    (*emo)->tila = 0;
+    (*emo) = lapsi;
+  } else 
+  {
+    lapsenlapsi = lapsi->vasen;
+    lapsi->vasen = lapsenlapsi->oikea;
+    lapsenlapsi->oikea = lapsi;
+    (*emo)->oikea = lapsenlapsi->vasen;
+    lapsenlapsi->vasen = *emo;
+    switch(lapsenlapsi->tila)
+    {
+      case 1:
+        (*emo)->tila = -1;
+        lapsi->tila = 0;
+        break;
+      case 0:
+        (*emo)->tila = lapsi->tila = 0;
+        break;
+      case -1:
+        (*emo)->tila = 0;
+        lapsi->tila = 1;
+    }
+    *emo = lapsenlapsi;
+  }
+  (*emo)->tila = 0;
+  *etp = 0;
+}
+
+void vasen_kierto(branchP *emo, int *etp)
+{
+  branchP lapsi, lapsenlapsi;
+
+  lapsi = (*emo)->vasen;
+  if(lapsi->tila == 1) 
+  {
+    (*emo)->vasen = lapsi->oikea;
+    lapsi->oikea = *emo;
+    (*emo)->tila = 0;
+    (*emo) = lapsi;
+  } else 
+  {
+    lapsenlapsi = lapsi->oikea;
+    lapsi->oikea = lapsenlapsi->vasen;
+    lapsenlapsi->vasen = lapsi;
+    (*emo)->vasen = lapsenlapsi->oikea;
+    lapsenlapsi->oikea = *emo;
+    switch(lapsenlapsi->tila)
+    {
+      case 1:
+        (*emo)->tila = -1;
+        lapsi->tila = 0;
+        break;
+      case 0:
+        (*emo)->tila = lapsi->tila = 0;
+        break;
+      case -1:
+        (*emo)->tila = 0;
+        lapsi->tila = 1;
+    }
+    *emo = lapsenlapsi;
+  }
+  (*emo)->tila = 0;
+  *etp = 0;
+}
+
+/*exits the program*/
+void exitP(branchP master){
+  exit();
+}
+
+/*reads from a given file value for the nodes that will be made and deposits them on a list, which will be sent as a pointer to the main (the numbers must on different lines of the file)*/
+int* readFile(){
+  char fileName[50], line[10], *ptr;
+  int round=0, size=0;
+  printf("tell a file name to read:\n");
+  scanf("%s", fileName);
+  FILE * file;
+  file = fopen(fileName, "r");
+  while ( fgets ( line, 10, file ) != NULL ){
+    size++;
+  }
+  fseek(file, 0, SEEK_SET);
+  int lineInt, *listS=malloc(sizeof(int*)*size);
+  while ( fgets ( line, sizeof line, file ) != NULL ){ 
+    fputs ( line, stdout );
+    line[strcspn(line, "\n")] = 0;
+    lineInt=((int) strtol(line, &ptr, 10));
+    listS[round]=lineInt;
+    round++; 
+     
+  }
+  fclose(file);
+  return listS;
+}
+
+/*following are function which were not neccesary for the project but were made anyaways !!NOTE!! Might not be complete*/
+/*void writeFile(int* list){
+  char fileName, line, *ptr;
+  int x=0, int round=0;
+  int lineInt, int *list[size];
+  FILE * file;
+  file = fopen(filename, "w");
+  do{
+    lineInt=list[round];
+    sprintf(line, "%d", lineInt);
+    line+"\n";
+    fprintf(file, "s", line);
+    round++;
+  }while(lineInt!=0);
+}
+
+int* getSizeOfTree(branchP master, int* numberN){
+  if(!master) return numberN;
+  numberN++;
+  getSizeOfTree(master->vasen, numberN);
+  getSizeOfTree(master->oikea, numberN);
+  return numberN;
+}
+
+int* goThroughTreeInOrder(branch* current, int* list, int* number,int level){
+  if(!current) return list;
+  if(level==0){
+    list[number];
+    number++;  
+    return list;
+  }
+  level--;
+  goThroughTreeInOrder(current->vasen, list, number, level);
+  goThroughTreeInOrder(current->oikea, list, number, level);
+  return list;
+}
+
+int* getTree(branchP master){
+  int *size, level=0, *number=0;
+  size=getSizeOfTree(master, size);
+  int list[*size];
+  branchP current=master;
+  while(number!=size){
+    goThroughTreeInOrder(current, list, number, level);
+    level++;
+  }
+ return list;
+}*/
